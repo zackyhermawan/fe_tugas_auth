@@ -45,7 +45,7 @@
           </div>
           <div class="flex flex-col gap-2 pt-2">
             <button type="submit" :class="`w-full py-2.5 px-4 text-white font-medium text-sm rounded-lg shadow transition ${isEditMode ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'}`">
-              {{ isEditMode ? 'Simpan Perubahan' : 'Simpan Ke Database' }}
+              {{ isEditMode ? 'Simpan Perubahan' : 'Simpan' }}
             </button>
             <button v-if="isEditMode" type="button" @click="resetForm" class="w-full py-2 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium text-sm rounded-lg transition">
               Batal / Cancel
