@@ -1,112 +1,10 @@
-<script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
-import axios from 'axios';
-
-const auth = useAuthStore();
-const router = useRouter();
-
-const daftarMahasiswa = ref([]);
-
-const npm = ref('');
-const nama = ref('');
-
-const isEditMode = ref(false);
-const editId = ref(null);
-
-const message = ref('');
-const isError = ref(false);
-
-const fetchMahasiswas = async () => {
-  try {
-    const response = await axios.get('http://localhost:5000/api/mahasiswa');
-    daftarMahasiswa.value = response.data.mahasiswa;
-    console.log("Isi Respon API Backend:",  response.data.mahasiswa);
-  } catch (error) {
-    console.error('Gagal mengambil data:', error);
-  }
-};
-
-onMounted(() => {
-  fetchMahasiswas();
-});
-
-const handleSubmit = async () => {
-  if (!npm.value || !nama.value) return;
-
-  message.value = '';
-  isError.value = false;
-    
-  try {
-    if (isEditMode.value) {
-      const response = await axios.put(`http://localhost:5000/api/mahasiswa/${editId.value}`, {
-        npm: npm.value,
-        nama: nama.value
-      });
-      message.value = response.data.message;
-    } else {
-      const response = await axios.post('http://localhost:5000/api/mahasiswa', {
-        npm: npm.value,
-        nama: nama.value
-      });
-      message.value = response.data.message;
-    }
-    
-    resetForm();
-    fetchMahasiswas();
-
-  } catch (error) {
-    message.value = error.response?.data?.message || 'Terjadi kesalahan. Silakan coba lagi.';
-    isError.value = true;
-  } 
-};
-
-const handleDelete = async (id) => {
-  if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
-
-  message.value = '';
-  isError.value = false;
-
-  try {
-    const response = await axios.delete(`http://localhost:5000/api/mahasiswa/${id}`);
-    message.value = response.data.message;
-    fetchMahasiswas();
-  } catch (error) {
-    message.value = error.response?.data?.message || 'Terjadi kesalahan. Silakan coba lagi.';
-    isError.value = true;
-  }
-};
-
-const editMahasiswa = (mahasiswa) => {
-  isEditMode.value = true;
-  editId.value = mahasiswa.id;
-  npm.value = mahasiswa.npm;
-  nama.value = mahasiswa.nama;
-};
-
-const resetForm = () => {
-  isEditMode.value = false;
-  editId.value = null;
-  npm.value = '';
-  nama.value = '';
-};
-
-const handleLogout = () => {
-  auth.logout();
-  router.push('/login').then(() => {
-    window.location.reload();
-  });
-};
-</script>
-
 <template>
   <div class="w-full max-w-5xl mx-auto p-6 space-y-6">
     
     <div class="flex flex-col md:flex-row justify-between items-center p-6 bg-white rounded-xl shadow-md border border-gray-100">
       <div class="text-center md:text-left mb-4 md:mb-0">
-        <h1 class="text-2xl font-bold text-gray-800">Selamat Datang, {{ auth.user?.name || 'User' }}!</h1>
-        <p class="text-sm text-gray-500">Email Sesi: {{ auth.user?.email }}</p>
+        <h1 class="text-2xl font-bold text-gray-800">Selamat Datang!</h1>
+        <p class="text-sm text-gray-500">Sistem Informasi CRUD Mahasiswa - Firebase</p>
       </div>
       <button @click="handleLogout" class="px-5 py-2.5 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 shadow-md transition duration-200">
         Keluar
@@ -159,8 +57,8 @@ const handleLogout = () => {
       <div class="lg:col-span-2 p-6 bg-white rounded-xl shadow-md border border-gray-100">
         <h2 class="text-lg font-bold text-gray-800 mb-4">📊 Data Mahasiswa</h2>
         
-        <div v-if="daftarMahasiswa.length === 0" class="text-center py-12 text-gray-400 text-sm">
-          Belum ada data mahasiswa di database MySQL.
+        <div v-if="mhsStore.daftarMahasiswa.length === 0" class="text-center py-12 text-gray-400 text-sm">
+          Belum ada data mahasiswa di database Firebase.
         </div>
 
         <div v-else class="overflow-x-auto">
@@ -173,14 +71,13 @@ const handleLogout = () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="mhs in daftarMahasiswa" :key="mhs.id" class="border-b border-gray-100 hover:bg-gray-50/70 transition">
+              <tr v-for="mhs in mhsStore.daftarMahasiswa" :key="mhs.id" class="border-b border-gray-100 hover:bg-gray-50/70 transition">
                 <td class="p-3 font-mono text-gray-700 font-medium">{{ mhs.npm }}</td>
                 <td class="p-3 text-gray-800">{{ mhs.nama }}</td>
                 <td class="p-3 text-center">
                     <button @click="editMahasiswa(mhs)" class="text-xs text-amber-600 hover:text-amber-800 font-semibold mr-3 hover:underline">
                         Edit
                     </button>
-                    
                     <button @click="handleDelete(mhs.id)" class="text-xs text-red-500 hover:text-red-700 font-semibold hover:underline">
                         Hapus
                     </button>
@@ -192,6 +89,80 @@ const handleLogout = () => {
       </div>
 
     </div>
-
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth.js';
+import { useMahasiswaStore } from '../stores/mahasiswa.js'; // Import store mahasiswa lokal
+
+const auth = useAuthStore();
+const mhsStore = useMahasiswaStore();
+const router = useRouter();
+
+// State Form & UI
+const npm = ref('');
+const nama = ref('');
+const selectedId = ref(null);
+const isEditMode = ref(false);
+
+const message = ref('');
+const isError = ref(false);
+
+// Tampilkan Flash Message Helper
+const flashMessage = (msg, error = false) => {
+  message.value = msg;
+  isError.value = error;
+  setTimeout(() => { message.value = ''; }, 4000);
+};
+
+// Handle Tambah & Edit Data Lokal
+const handleSubmit = () => {
+  try {
+    if (isEditMode.value) {
+      // Jalankan fungsi edit lokal
+      mhsStore.ubahMahasiswa(selectedId.value, { npm: npm.value, nama: nama.value });
+      flashMessage("Data mahasiswa berhasil diperbarui!");
+    } else {
+      // Jalankan fungsi tambah lokal
+      mhsStore.tambahMahasiswa({ npm: npm.value, nama: nama.value });
+      flashMessage("Data mahasiswa berhasil ditambahkan!");
+    }
+    resetForm();
+  } catch (err) {
+    flashMessage("Terjadi kesalahan sistem", true);
+  }
+};
+
+// Set Form ke Mode Edit saat tombol edit klik
+const editMahasiswa = (mhs) => {
+  isEditMode.value = true;
+  selectedId.value = mhs.id;
+  npm.value = mhs.npm;
+  nama.value = mhs.nama;
+};
+
+// Hapus data mahasiswa secara lokal
+const handleDelete = (id) => {
+  if (!confirm("Apakah Anda yakin ingin menghapus mahasiswa ini?")) return;
+  
+  mhsStore.hapusMahasiswa(id);
+  flashMessage("Data mahasiswa berhasil dihapus!", false);
+};
+
+// Reset Form Batal
+const resetForm = () => {
+  isEditMode.value = false;
+  selectedId.value = null;
+  npm.value = '';
+  nama.value = '';
+};
+
+// Logout Sesi
+const handleLogout = () => {
+  auth.logout();
+  router.push('/login');
+};
+</script>

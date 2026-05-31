@@ -1,60 +1,105 @@
-import axios from "axios";
-import { defineStore } from "pinia";
-import { computed, ref } from "vue";
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
 
 export const useAuthStore = defineStore('auth', () => {
-    const user = ref(JSON.parse(localStorage.getItem('user') || 'null'));
-    const token = ref(localStorage.getItem('token') || null);
+  const token = ref(localStorage.getItem('access_token'));
+  const loading = ref(false);
+  const errorMsg = ref(null);
 
-    const isAuthenticated = computed(() => !!token.value);
+  const isAuthenticated = computed(() => !!token.value);
 
-    const register = async(email, password) => {
-        try {
-            const response = await axios.post('http://localhost:5000/api/auth/register', {
-                email,
-                password
-            });
-            return response.data;
+  // Mengambil daftar user terdaftar dari localStorage (jika belum ada, default kosong)
+  const getRegisteredUsers = () => {
+    const users = localStorage.getItem('registered_users');
+    return users ? JSON.parse(users) : [];
+  };
 
-        } catch (error) {
-            console.error(error);
-            throw error.response?.data?.message || 'Registrasi gagal';
-        }
+  // Fungsi membuat JWT Tiruan (Base64)
+  function generateMockJWT(username) {
+    const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+    const payload = btoa(JSON.stringify({ 
+      username: username, 
+      role: "user", 
+      exp: Math.floor(Date.now() / 1000) + (60 * 60)
+    }));
+    const signature = "mock_signature_key_123";
+    return `${header}.${payload}.${signature}`;
+  }
+
+  // ACTION: Register Akun Baru ke LocalStorage
+  async function register(username, password) {
+    loading.value = true;
+    errorMsg.value = null;
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Variasi loading estetik
+
+    try {
+      const users = getRegisteredUsers();
+
+      // Cek apakah username sudah pernah terdaftar
+      const isExist = users.some(u => u.username.toLowerCase() === username.toLowerCase());
+      if (isExist || username.toLowerCase() === 'admin') {
+        throw new Error('Username sudah digunakan! Silakan cari nama lain.');
+      }
+
+      // Tambah user baru ke dalam array
+      users.push({ username, password });
+      localStorage.setItem('registered_users', JSON.stringify(users));
+      return true;
+    } catch (err) {
+      errorMsg.value = err.message;
+      return false;
+    } finally {
+      loading.value = false;
     }
+  }
 
-    const login = async(email, password) => {
-        try {
-            const response = await axios.post('http://localhost:5000/api/auth/login', {
-                email,
-                password
-            });
+  // ACTION: Login (Mencocokkan data akun default atau akun hasil register)
+  async function login(username, password) {
+    loading.value = true;
+    errorMsg.value = null;
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
-            token.value = response.data.token;
-            user.value = response.data.user;
+    try {
+      // 1. Cek Akun Master Default
+      if (username === 'admin' && password === 'admin123') {
+        const mockToken = generateMockJWT(username);
+        token.value = mockToken;
+        localStorage.setItem('access_token', mockToken);
+        return true;
+      }
 
-            localStorage.setItem('token', token.value);
-            localStorage.setItem('user', JSON.stringify(user.value));
+      // 2. Cek Akun dari Hasil Register
+      const users = getRegisteredUsers();
+      const userValid = users.find(u => u.username === username && u.password === password);
 
-            return response.data;
-        } catch (error) {
-            console.error(error);
-            throw error.response?.data?.message || 'Login gagal';
-        }
+      if (userValid) {
+        const mockToken = generateMockJWT(username);
+        token.value = mockToken;
+        localStorage.setItem('access_token', mockToken);
+        return true;
+      } else {
+        throw new Error('Username atau password salah!');
+      }
+    } catch (err) {
+      errorMsg.value = err.message || 'Terjadi kesalahan login';
+      return false;
+    } finally {
+      loading.value = false;
     }
+  }
 
-    const logout = () => {
-        token.value = null;
-        user.value = null;
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-    }
+  function logout() {
+    token.value = null;
+    localStorage.removeItem('access_token');
+  }
 
-    return {
-        user,
-        token,
-        isAuthenticated,
-        register,
-        login,
-        logout
-    };
+  return {
+    token,
+    loading,
+    errorMsg,
+    isAuthenticated,
+    login,
+    register,
+    logout,
+  };
 });
