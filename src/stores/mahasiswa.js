@@ -5,8 +5,6 @@ export const useMahasiswaStore = defineStore('mahasiswa', () => {
   // Mengambil data awal dari localStorage, jika kosong kasih array bawaan (dummy data awal)
   const initialData = localStorage.getItem('data_mahasiswa');
   const daftarMahasiswa = ref(initialData ? JSON.parse(initialData) : [
-    { id: 1, nim: '260101001', nama: 'Sultan', angkatan: '2026', prodi: 'RPL' },
-    { id: 2, nim: '260101002', nama: 'Budi Santoso', angkatan: '2026', prodi: 'Informatika' }
   ]);
 
   // Fungsi Helper untuk mensinkronisasi data ref ke LocalStorage setiap ada perubahan
