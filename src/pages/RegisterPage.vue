@@ -1,74 +1,34 @@
-<template>
-  <div class="min-h-screen w-full flex items-center justify-center bg-gray-100">
-    <div class="w-full max-w-md p-8 bg-white rounded-xl shadow-lg border border-gray-100">
-      <h2 class="text-3xl font-bold text-center text-gray-800 mb-2">Daftar Akun</h2>
-      <p class="text-center text-gray-500 mb-6 text-sm">Buat akun Anda secara instan di Firebase Local</p>
-      
-      <div v-if="successMessage" class="p-3 mb-4 text-sm text-emerald-700 bg-emerald-100 rounded-lg">
-        {{ successMessage }}
-      </div>
-
-      <div v-if="errorMessage" class="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg">
-        {{ errorMessage }}
-      </div>
-  
-      <form @submit.prevent="handleRegister" class="space-y-5">
-        <div>
-          <label class="block mb-1.5 text-sm font-medium text-gray-700">Username</label>
-          <input v-model="username" type="text" placeholder="Buat nama pengguna" required
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
-        </div>
-  
-        <div>
-          <label class="block mb-1.5 text-sm font-medium text-gray-700">Password</label>
-          <input v-model="password" type="password" placeholder="••••••••" required
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
-        </div>
-  
-        <button type="submit" :disabled="isLoading"
-          class="w-full py-3 px-4 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md transition disabled:bg-blue-400">
-          {{ isLoading ? 'Mendaftarkan Akun...' : 'Daftar Sekarang' }}
-        </button>
-      </form>
-  
-      <p class="mt-6 text-sm text-center text-gray-600">
-        Sudah punya akun? 
-        <RouterLink to="/login" class="text-blue-600 font-semibold hover:underline">Masuk di sini</RouterLink>
-      </p>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth.js';
+import { useAuthStore } from '@/stores/auth';
 
-const router = useRouter();
-const authStore = useAuthStore();
+const auth = useAuthStore();
 
 const username = ref('');
 const password = ref('');
-const errorMessage = ref('');
-const successMessage = ref('');
+
 const isLoading = ref(false);
 
+const successMessage = ref('');
+const errorMessage = ref('');
+
 const handleRegister = async () => {
-  isLoading.value = true;
-  errorMessage.value = '';
-  successMessage.value = '';
-  
-  const success = await authStore.register(username.value, password.value);
-  
-  isLoading.value = false;
-  if (success) {
-    successMessage.value = 'Pendaftaran sukses! Mengalihkan ke halaman login...';
-    // Beri jeda 1.5 detik biar user bisa baca pesan suksesnya dulu sebelum pindah
-    setTimeout(() => {
-      router.push('/login');
-    }, 1500);
-  } else {
-    errorMessage.value = authStore.errorMsg;
+  try {
+    isLoading.value = true;
+
+    await auth.register(
+      username.value,
+      password.value
+    );
+
+    successMessage.value =
+      'Akun berhasil dibuat';
+  } catch (err) {
+    errorMessage.value =
+      err.response?.data?.error ||
+      'Registrasi gagal';
+  } finally {
+    isLoading.value = false;
   }
 };
 </script>

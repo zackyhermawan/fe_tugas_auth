@@ -1,46 +1,41 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import api from '../services/api';
 
-export const useMahasiswaStore = defineStore('mahasiswa', () => {
-  // Mengambil data awal dari localStorage, jika kosong kasih array bawaan (dummy data awal)
-  const initialData = localStorage.getItem('data_mahasiswa');
-  const daftarMahasiswa = ref(initialData ? JSON.parse(initialData) : [
-  ]);
+export const useMahasiswaStore = defineStore('mahasiswa', {
+  state: () => ({
+    daftarMahasiswa: [],
+    loading: false
+  }),
 
-  // Fungsi Helper untuk mensinkronisasi data ref ke LocalStorage setiap ada perubahan
-  function saveToLocalStorage() {
-    localStorage.setItem('data_mahasiswa', JSON.stringify(daftarMahasiswa.value));
-  }
+  actions: {
+    async getMahasiswa() {
+      try {
+        this.loading = true;
 
-  // 1. CREATE (Tambah Mahasiswa)
-  function tambahMahasiswa(mahasiswa) {
-    const baru = {
-      id: Date.now(), // Generate ID unik pake timestamp
-      ...mahasiswa
-    };
-    daftarMahasiswa.value.push(baru);
-    saveToLocalStorage();
-  }
+        const res = await api.get('/mahasiswa');
 
-  // 2. UPDATE (Edit Mahasiswa)
-  function ubahMahasiswa(id, dataBaru) {
-    const index = daftarMahasiswa.value.findIndex(m => m.id === id);
-    if (index !== -1) {
-      daftarMahasiswa.value[index] = { ...daftarMahasiswa.value[index], ...dataBaru };
-      saveToLocalStorage();
+        this.daftarMahasiswa = res.data;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async tambahMahasiswa(data) {
+      await api.post('/mahasiswa', data);
+
+      await this.getMahasiswa();
+    },
+
+    async updateMahasiswa(id, data) {
+      await api.put(`/mahasiswa/${id}`, data);
+
+      await this.getMahasiswa();
+    },
+
+    async deleteMahasiswa(id) {
+      await api.delete(`/mahasiswa/${id}`);
+
+      await this.getMahasiswa();
     }
   }
-
-  // 3. DELETE (Hapus Mahasiswa)
-  function hapusMahasiswa(id) {
-    daftarMahasiswa.value = daftarMahasiswa.value.filter(m => m.id !== id);
-    saveToLocalStorage();
-  }
-
-  return {
-    daftarMahasiswa,
-    tambahMahasiswa,
-    ubahMahasiswa,
-    hapusMahasiswa
-  };
 });
