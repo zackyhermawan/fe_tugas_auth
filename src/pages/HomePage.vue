@@ -78,7 +78,6 @@ const handleLogout = () => {
     <div class="flex flex-col md:flex-row justify-between items-center p-6 bg-white rounded-xl shadow-md border border-gray-100">
       <div class="text-center md:text-left mb-4 md:mb-0">
         <h1 class="text-2xl font-bold text-gray-800">Selamat Datang!</h1>
-        <p class="text-sm text-gray-500">Sistem Informasi CRUD Mahasiswa - Node.js & Sequelize</p>
       </div>
       <button @click="handleLogout" class="px-5 py-2.5 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 shadow-md transition duration-200">
         Keluar
